@@ -23,7 +23,6 @@ n_over = 20
 
 def BFCR_precomputed_data():
     import numpy as np
-    #All of the precomputed data belows assumes d=12 in the FC process
     
     #Precomputed bracing data
     left_bracing_data = np.array([1.16381509, 1.15435798, 1.14496124, 1.13562439, 1.12634697, 1.11712855, 1.10796876, 1.09886722, 1.08982364, 1.08083771, 1.07190919, 1.06303785])
