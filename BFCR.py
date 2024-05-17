@@ -68,11 +68,9 @@ def BFCR(data,sigma_power=None):
     #Calculate the fft of the continued data
     coeffs = np.fft.rfft(data_cont)
     
-    #Apply sigma approximation before reconstruction
+    #Apply sigma approximation to the coeffs before reconstruction
     len_coeffs = len(coeffs) #For code optimization
-    for i in range(len_coeffs-1):
-        coeffs[i] = (np.sinc(i/len_coeffs)**sigma_power)*coeffs[i]
-    coeffs[-1] = 0
+    coeffs = np.multiply([np.sinc(i/len_coeffs)**sigma_power for i in range(len_coeffs)],coeffs)    
     
     #Reconstruct the sigma approximated continued data
     #The number 51 comes from the parameters chosen in the FC process,
