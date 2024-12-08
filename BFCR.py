@@ -38,16 +38,26 @@ def BFCR(data,sigma_power=None):
     #Rescale both the precomputed bracing and continuation data based on the 
     #projected next value in the dataset as determined by the average of
     #two lines of best fit projected forward
-    A_stack = np.vstack([np.linspace(0,2,3), np.ones(3)]).T #for code optimization
+    Q, R = np.linalg.qr(np.vstack([np.linspace(0,2,3), np.ones(3)]).T)
+    Q = Q.T #take the transpose
+    
+    #Initialize solutions to the linear least squares problems
+    solutions = np.zeros((2, 2))
     
     #Left bracing data point
-    m, c = np.linalg.lstsq(A_stack, np.flip(data[1:4],0), rcond=None)[0] #Line of best fit 1
-    m2, c2 = np.linalg.lstsq(A_stack, np.flip(data[0:3],0), rcond=None)[0] #Line of best fit 2
+    targets = np.column_stack((data[3:0:-1], data[2::-1]))
+    for i in range(2):
+        solutions[:, i] = np.linalg.solve(R, Q @ targets[:, i])
+    m, c = solutions[:, 0]  # First solution
+    m2, c2 = solutions[:, 1]  # Second solution
     data_left_pt = .5*((m*4+c)+(m2*3+c2)) #Average of forward projections of these lines
     
     #Right bracing data point
-    m, c = np.linalg.lstsq(A_stack, data[-4:-1], rcond=None)[0] #Line of best fit 1
-    m2, c2 = np.linalg.lstsq(A_stack, data[-3:], rcond=None)[0] #Line of best fit 2
+    targets = np.column_stack((data[-4:-1], data[-3:]))
+    for i in range(2):
+        solutions[:, i] = np.linalg.solve(R, Q @ targets[:, i])
+    m, c = solutions[:, 0]  # First solution
+    m2, c2 = solutions[:, 1]  # Second solution
     data_right_pt = .5*((m*4+c)+(m2*3+c2)) #Average of forward projections of these lines
     
     #Calculate scaling multipliers
@@ -63,14 +73,14 @@ def BFCR(data,sigma_power=None):
     
     #Subtract the mean from the continued data
     cont_data_mean = np.mean(data_cont)
-    data_cont = data_cont-cont_data_mean
+    data_cont -= cont_data_mean
     
     #Calculate the fft of the continued data
     coeffs = np.fft.rfft(data_cont)
     
     #Apply sigma approximation to the coeffs before reconstruction
-    len_coeffs = len(coeffs) #For code optimization
-    coeffs = np.multiply([np.sinc(i/len_coeffs)**sigma_power for i in range(len_coeffs)],coeffs)    
+    len_coeffs = len(coeffs) #For efficiency
+    coeffs *= [np.sinc(i/len_coeffs)**sigma_power for i in range(len_coeffs)]  
     
     #Reconstruct the sigma approximated continued data
     #The number 51 comes from the parameters chosen in the FC process,
@@ -82,15 +92,15 @@ def BFCR(data,sigma_power=None):
     BFCR_trend = BFCR_trend[12:len_data+12]
     
     #Add back the mean to the reconstruction
-    BFCR_trend = BFCR_trend+cont_data_mean
+    BFCR_trend += cont_data_mean
     
     #Shift the reconstruction by the average difference between the reconstruction
     #and the original signal to eliminate residual error from the neglected modes
     #to arrive at the final trend
-    BFCR_trend = BFCR_trend-(np.mean(BFCR_trend-data))
+    BFCR_trend -= np.mean(BFCR_trend-data)
     
     return(BFCR_trend)
-
+    
 if __name__ == "__main__":
     #Calculate BFCR regression
     BFCR_trend = BFCR(data)
